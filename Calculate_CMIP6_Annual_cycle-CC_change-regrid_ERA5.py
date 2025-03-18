@@ -108,13 +108,21 @@ else:
 variables = args.var_names.split(",")
 idir = args.input_dir
 odir = args.output_dir
-experiments = ["historical", "ssp585"]
-syear_exp = {"historical": 1985, "ssp585": 2070}
-eyear_exp = {"historical": 2014, "ssp585": 2099}
+experiments = ["historical", "ssp126"] #"ssp585"]
+syear_exp = {"historical": 1985, "ssp126": 2070} #"ssp585": 2070}
+eyear_exp = {"historical": 2014, "ssp126": 2099} #"ssp585": 2099}
 
 acycle_odir = f"{odir}/annual_cycle"
 deltas_odir = f"{odir}/deltas"
 regrid_era5 = f"{odir}/regrid_ERA5"
+
+## subdomain for which to extract GCM data
+## should be either global (0,360,-90,90)
+## or anything larger than ERA5 subdomain
+## except for storage and performance reasons, there is no benefit of
+## using a subdomain.
+box={'lon1': 65, 'lon2': 90,
+     'lat1': 20, 'lat2': 44}
 
 plvs = np.asarray(
     [
@@ -167,7 +175,7 @@ def main():
             if not os.path.isfile(regrid_file):
                 try:
                     subprocess.check_output(
-                        f"cdo -remapbil,era5_grid {delta_file} {regrid_file}",
+                        f"cdo -remapbil,/mnt/hdd2/S_K_B/ERA5/era5_grid {delta_file} {regrid_file}",
                         shell=True,
                     )
                     print(
@@ -181,85 +189,158 @@ def main():
 
 ###########################################################
 ###########################################################
+# def calculate_annual_cycle(GCM, varname, exp, syear, eyear, idir, odir):
+#     """For a given model, member and variable,
+#     Calculate annual cycle"""
+
+#     filenames_all = sorted(glob(f"{idir}/{exp}/{varname}/{GCM}/{varname}*nc"))
+#     print(filenames_all)
+#     finall = xr.open_mfdataset(filenames_all, concat_dim="time", combine="nested")
+
+#     if finall.time.dtype == "O":
+#         finall["time"] = finall["time"].astype("datetime64[ns]")
+
+#     Path(f"{odir}/{GCM}/").mkdir(exist_ok=True, parents=True)
+
+#     ofname = f"{odir}/{GCM}/{varname}_{exp}.nc"
+
+#     if not os.path.isfile(ofname):
+#         fin_p = finall.sel(time=slice(str(syear), str(eyear)))
+
+#         if varname == "hus":
+#             fin_p = fin_p.where((fin_p.hus >= 0) & (fin_p.hus <= 100))
+#         elif varname == "hur":
+#             fin_p = fin_p.where((fin_p.hur >= 0) & (fin_p.hur <= 100))
+#         elif varname == "ta":
+#             fin_p = fin_p.where((fin_p.ta >= 0) & (fin_p.ta < 400))
+#         elif varname == "ua":
+#             fin_p = fin_p.where((fin_p.ua > -500) & (fin_p.ua < 500))
+#         elif varname == "va":
+#             fin_p = fin_p.where((fin_p.va > -500) & (fin_p.va < 500))
+#         elif varname == "zg":
+#             fin_p = fin_p.where((fin_p.zg > -1000) & (fin_p.zg < 60000))
+
+#         fin_p_mm = fin_p.groupby("time.month").mean("time")
+#         fin_p_mm.to_netcdf(ofname)
+#         print(
+#             f"{bcolors.OKGREEN}Created annual cycle file for {GCM} {varname} {exp}{bcolors.ENDC}"
+#         )
+#     else:
+#         print(f"{bcolors.OKCYAN}{exp} {varname} {GCM} Already processed{bcolors.ENDC}")
+
+#     finall.close()
+
 def calculate_annual_cycle(GCM, varname, exp, syear, eyear, idir, odir):
-    """For a given model, member and variable,
-    Calculate annual cycle"""
 
     filenames_all = sorted(glob(f"{idir}/{exp}/{varname}/{GCM}/{varname}*nc"))
-    finall = xr.open_mfdataset(filenames_all, concat_dim="time", combine="nested")
 
-    if finall.time.dtype == "O":
-        finall["time"] = finall["time"].astype("datetime64[ns]")
+    if exp == "historical":
+        filenames_all = filenames_all
+        print(filenames_all)
+    else:
+        if 2015 <= syear <= 2064 and 2015 <= eyear <= 2064:
+            filenames_all = [f for f in filenames_all if "2015" in f]
+            print(filenames_all)
+        elif 2065 <= syear <= 2099 and 2065 <= eyear <= 2099:
+            filenames_all = [f for f in filenames_all if "2065" in f]
+            print(filenames_all)
+        else:
+            print("ERROR: Year range not found")
+            return
 
     Path(f"{odir}/{GCM}/").mkdir(exist_ok=True, parents=True)
 
     ofname = f"{odir}/{GCM}/{varname}_{exp}.nc"
+    print(f"ofname: {ofname}")
+    ofname1 = f"{odir}/{GCM}/{varname}_{exp}_AC.nc"
+    print(f"AC_ofname: {ofname1}")
 
     if not os.path.isfile(ofname):
-        fin_p = finall.sel(time=slice(str(syear), str(eyear)))
-
-        if varname == "hus":
-            fin_p = fin_p.where((fin_p.hus >= 0) & (fin_p.hus <= 100))
-        elif varname == "hur":
-            fin_p = fin_p.where((fin_p.hur >= 0) & (fin_p.hur <= 100))
-        elif varname == "ta":
-            fin_p = fin_p.where((fin_p.ta >= 0) & (fin_p.ta < 400))
-        elif varname == "ua":
-            fin_p = fin_p.where((fin_p.ua > -500) & (fin_p.ua < 500))
-        elif varname == "va":
-            fin_p = fin_p.where((fin_p.va > -500) & (fin_p.va < 500))
-        elif varname == "zg":
-            fin_p = fin_p.where((fin_p.zg > -1000) & (fin_p.zg < 60000))
-
-        fin_p_mm = fin_p.groupby("time.month").mean("time")
-        fin_p_mm.to_netcdf(ofname)
-        print(
-            f"{bcolors.OKGREEN}Created annual cycle file for {GCM} {varname} {exp}{bcolors.ENDC}"
-        )
+        try:
+            cdo_command1 = (
+                f"cdo -L -sellonlatbox,{box['lon1']},{box['lon2']},{box['lat1']},{box['lat2']} "
+                f"-selyear,{syear}/{eyear} "
+                f"-cat "
+                f"{' '.join(filenames_all)} "
+                f"{ofname}"
+            )
+            print(f"Running CDO command: {cdo_command1}")
+            subprocess.check_output(cdo_command1, shell=True)
+            cdo_command2 = (
+                f"cdo -L -ymonmean {ofname} {ofname1}"
+            )
+            print(f"Running CDO command: {cdo_command2}")
+            subprocess.check_output(cdo_command2, shell=True)
+            print(
+                f"{bcolors.OKGREEN}Created annual cycle file for {GCM} {varname} {exp}{bcolors.ENDC}"
+            )
+        except Exception:
+            raise SystemExit(
+                f"{bcolors.ERROR}ERROR: Could not create annual cycle file for {GCM} {varname} {exp}{bcolors.ENDC}"
+            )
     else:
-        print(f"{bcolors.OKCYAN}{exp} {varname} {GCM} Already processed{bcolors.ENDC}")
-
-    finall.close()
+        print(f"{bcolors.OKCYAN}{exp} {varname} {GCM} Already processed{bcolors.ENDC}")                
 
 
 ###########################################################
 ###########################################################
+# def calculate_CC_signal(GCM, varname, idir, odir):
+#     """From present and future annual cycle
+#     calculate CC signal for every month"""
+
+#     ofname = f"{odir}/{GCM}/{varname}_delta.nc"
+#     Path(f"{odir}/{GCM}/").mkdir(exist_ok=True, parents=True)
+
+#     if not os.path.isfile(ofname):
+#         fin_p = xr.open_dataset(f"{idir}/{GCM}/{varname}_historical_AC.nc")
+#         fin_f = xr.open_dataset(f"{idir}/{GCM}/{varname}_ssp126_AC.nc") #_ssp585.nc")
+#         # import pdb; pdb.set_trace()  # fmt: skip
+#         fin_d = fin_f - fin_p
+
+#         if "plev_bnds" in fin_d.keys():
+#             fin_d = fin_d.drop_vars(("plev_bnds"))
+#         if "lon_bnds" in fin_d.keys():
+#             fin_d = fin_d.drop_vars(("lon_bnds"))
+#         if "lat_bnds" in fin_d.keys():
+#             fin_d = fin_d.drop_vars(("lat_bnds"))
+
+#         datelist = pd.date_range(f"1990-01-01", periods=12, freq="MS")
+
+#         foutclean = fin_d.rename({"month": "time"})
+#         foutclean = foutclean.assign_coords({"time": datelist})
+#         foutclean.to_netcdf(
+#             ofname,
+#             unlimited_dims="time",
+#         )
+
+#         fin_p.close()
+#         fin_f.close()
+#         print(f"{bcolors.OKGREEN}Created delta file for {GCM} {varname}{bcolors.ENDC}")
+#     else:
+#         print(
+#             f"{bcolors.OKCYAN}CC file {varname} {GCM} Already processed{bcolors.ENDC}"
+#         )
+
 def calculate_CC_signal(GCM, varname, idir, odir):
-    """From present and future annual cycle
-    calculate CC signal for every month"""
 
     ofname = f"{odir}/{GCM}/{varname}_delta.nc"
     Path(f"{odir}/{GCM}/").mkdir(exist_ok=True, parents=True)
 
     if not os.path.isfile(ofname):
-        fin_p = xr.open_dataset(f"{idir}/{GCM}/{varname}_historical.nc")
-        fin_f = xr.open_dataset(f"{idir}/{GCM}/{varname}_ssp585.nc")
-        # import pdb; pdb.set_trace()  # fmt: skip
-        fin_d = fin_f - fin_p
-
-        if "plev_bnds" in fin_d.keys():
-            fin_d = fin_d.drop(("plev_bnds"))
-        if "lon_bnds" in fin_d.keys():
-            fin_d = fin_d.drop(("lon_bnds"))
-        if "lat_bnds" in fin_d.keys():
-            fin_d = fin_d.drop(("lat_bnds"))
-
-        datelist = pd.date_range(f"1990-01-01", periods=12, freq="MS")
-
-        foutclean = fin_d.rename({"month": "time"})
-        foutclean = foutclean.assign_coords({"time": datelist})
-        foutclean.to_netcdf(
-            ofname,
-            unlimited_dims="time",
-        )
-
-        fin_p.close()
-        fin_f.close()
-        print(f"{bcolors.OKGREEN}Created delta file for {GCM} {varname}{bcolors.ENDC}")
+        try:
+            cdo_command = (
+                f"cdo -L -sub {idir}/{GCM}/{varname}_ssp126_AC.nc {idir}/{GCM}/{varname}_historical_AC.nc "
+                f"{ofname}"
+            )
+            print(f"Running CDO command: {cdo_command}")
+            subprocess.check_output(cdo_command, shell=True)
+            print(f"{bcolors.OKGREEN}Created delta file for {GCM} {varname}{bcolors.ENDC}")
+        except Exception:
+            raise SystemExit(
+                f"{bcolors.ERROR}ERROR: Could not create delta file for {GCM} {varname}{bcolors.ENDC}"
+            )
     else:
-        print(
-            f"{bcolors.OKCYAN}CC file {varname} {GCM} Already processed{bcolors.ENDC}"
-        )
+        print(f"{bcolors.OKCYAN}CC file {varname} {GCM} Already processed{bcolors.ENDC}")
 
 
 ###############################################################################
