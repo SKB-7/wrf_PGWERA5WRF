@@ -75,7 +75,7 @@ def parse_args():
         "--input_dir",
         type=str,
         help="Directory with input GCM delta files on ERA5 grid",
-        default="./regrid_ERA5/",
+        default="./", #"./regrid_ERA5/",
     )
 
     # corrected_plevs directory
@@ -93,11 +93,14 @@ def parse_args():
         "--output_dir",
         type=str,
         help="Directory where the GCM ENSEMBLE delta files should be stored.",
-        default="./regrid_ERA5/",
+        default="./", #"./regrid_ERA5/",
     )
+
     args = parser.parse_args()
     return args
 
+#####################################################################
+#####################################################################
 
 args = parse_args()
 models_str = args.models
@@ -109,6 +112,12 @@ else:
     models = args.models.split(",")
 
 variables = args.var_names.split(",")
+
+idir = args.input_dir
+# odir = args.output_dir
+# print(odir)
+ENSdelta_odir = f"{args.output_dir}/ENSdelta"
+crctd_plvs = f"{args.corrected_plevs_dir}"
 
 plvs = np.asarray(
     [
@@ -133,50 +142,69 @@ plvs = np.asarray(
         100,
     ]
 )
-correct_plevs = True
-#####################################################################
-#####################################################################
-
+# correct_plevs = True
 
 def main():
-    Path(args.output_dir).mkdir(exist_ok=True, parents=True)
-
+    print(f"{bcolors.OKCYAN}Correcting pressure levels and making ensemble mean{bcolors.ENDC}")
+    Path(crctd_plvs).mkdir(exist_ok=True, parents=True)
+    print(f"Corrected plevs Directory: {crctd_plvs}")
+    Path(ENSdelta_odir).resolve().mkdir(exist_ok=True, parents=True)
+    print(f"Output Directory: {ENSdelta_odir}")
+    
     for GCM in models:
-        if correct_plevs:
-            Path(f"{args.corrected_plevs_dir}").mkdir(exist_ok=True, parents=True)
-            for vn, varname in enumerate(variables):
-                filepath = f"{args.input_dir}/{varname}_{GCM}_delta.nc"
-                filename = filepath.split("/")[-1]
-                print(filename)
-                fin = xr.open_dataset(filepath)
-                if varname in ["ta", "hus", "ua", "va", "zg"]:
-                    fin.coords["plev"] = plvs
-                    fin.to_netcdf(f"{args.corrected_plevs_dir}/{filename}")
-                else:
-                    if "height" in fin.coords:
-                        fin = fin.drop("height")
-                    fin = fin[varname]
-                    # import pdb; pdb.set_trace()  # fmt: skip
-                    fin.to_netcdf(f"{args.corrected_plevs_dir}/{filename}")
+        # if correct_plevs:
+        for vn, varname in enumerate(variables):
+            filepath = f"{idir}/{varname}_{GCM}_delta.nc"
+            filename = filepath.split("/")[-1]
+            # print(filename)
+            fin = xr.open_dataset(filepath)
+            if varname in ["ta", "hus", "ua", "va", "zg"]:
+                fin.coords["plev"] = plvs
+                fin.to_netcdf(f"{crctd_plvs}/{filename.split('_delta')[0]}_crctd_plvs_delta.nc")
+            else:
+                if "height" in fin.coords:
+                    fin = fin.drop("height")
+                fin = fin[varname]
+                # import pdb; pdb.set_trace()  # fmt: skip
+                fin.to_netcdf(f"{crctd_plvs}/{filename.split('_delta')[0]}_crctd_plvs_delta.nc")
 
-    for varname in variables:
-        print(varname)
-        # import pdb; pdb.set_trace()  # fmt: skip
-        # try:
-        #     subprocess.check_output(
-        #         f"cdo ensmean {args.corrected_plevs_dir}/{varname}_* {varname}_CC_signal_ssp585_2099-2070_1985-2014.nc",
-        #         shell=True,
-        #     )
-        #     print(f"{bcolors.OKGREEN}Ensemble mean of GCMs{bcolors.ENDC}")
-        # except Exception:
-        #     raise SystemExit(
-        #         f"{bcolors.ERROR}ERROR: Could not make the ensemble mean{bcolors.ENDC}"
-        #     )
-        filesin = sorted(glob(f"{args.corrected_plevs_dir}/{varname}_*"))
+            ens_file = ENSdelta_odir + "/" + f"{varname}_CC_signal_ssp585_2099-2070_1985-2014.nc"
+            print(ens_file)
+            crctd_plvs_file = f"{crctd_plvs}/{varname}_{GCM}_crctd_plvs_delta.nc"
+            # print('crctd_plvs_file:', crctd_plvs_file)
 
-        fin = xr.open_mfdataset(filesin, concat_dim="model", combine="nested")
-        fin_ensmean = fin.mean(dim="model").squeeze()
-        fin_ensmean.to_netcdf(f"{varname}_CC_signal_ssp585_2070-2099_1985-2014.nc")
+            if not os.path.isfile(ens_file):
+                try:
+                    cdo_command = (f"cdo ensmean {crctd_plvs_file} {ens_file}")
+                    print(f"Command: {cdo_command}")
+                    subprocess.check_output(cdo_command, shell=True)
+                    print(f"{bcolors.OKGREEN}Ensemble mean of GCMs{bcolors.ENDC}")
+                except Exception:
+                    raise SystemExit(
+                        f"{bcolors.ERROR}ERROR: Could not make the ensemble mean{bcolors.ENDC}"
+                    )
+
+    # for varname in variables:
+    #     print(varname)
+    #     # import pdb; pdb.set_trace()  # fmt: skip
+    #     ens_file = f"{ENSdelta_odir}/{varname}_CC_signal_ssp585_2099-2070_1985-2014.nc"
+    #     if not os.path.isfile(ens_file):
+    #         try:
+    #             subprocess.check_output(
+    #                 f"cdo ensmean {crctd_plvs}/{varname}_* {ens_file}",
+    #                 shell=True,
+    #             )
+    #             print(f"{bcolors.OKGREEN}Ensemble mean of GCMs{bcolors.ENDC}")
+    #         except Exception:
+    #             raise SystemExit(
+    #                 f"{bcolors.ERROR}ERROR: Could not make the ensemble mean{bcolors.ENDC}"
+    #             )
+        # filesin = sorted(glob(f"{args.corrected_plevs_dir}/{varname}_*"))
+        # print(filesin)
+
+        # fin = xr.open_mfdataset(filesin, concat_dim="model", combine="nested")
+        # fin_ensmean = fin.mean(dim="model").squeeze()
+        # fin_ensmean.to_netcdf(f"{varname}_CC_signal_ssp585_2070-2099_1985-2014.nc")
 
 
 ###############################################################################
@@ -184,6 +212,6 @@ def main():
 ###############################################################################
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()
 
 ###############################################################################
