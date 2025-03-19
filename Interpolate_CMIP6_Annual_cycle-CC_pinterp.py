@@ -28,10 +28,10 @@ import pandas as pd
 import xarray as xr
 import os
 
-ERA5_dir = "./"
-CMIP6anom_dir = "./"
+ERA5_dir = "/mnt/hdd2/S_K_B/ERA5" #"./"
+CMIP6anom_dir = "/mnt/hdd2/S_K_B/annualcycles_deltas_regridERA5/regrid_ERA5/ENSdelta" #"./"
 
-variables = ["ta", "ua", "va", "zg", "hus"]
+variables = ["ta", "ua", "va", "zg", "hur"]
 era5_ref = xr.open_dataset(f"{ERA5_dir}/era5_plev.nc")
 era5_plev = era5_ref.plev.values
 
@@ -46,17 +46,17 @@ def main():
         ctime_00 = checkpoint(0)
 
         if not os.path.exists(
-            f"{CMIP6anom_dir}/interp_plevs/{varname}_CC_signal_ssp585_2070-2099_1985-2014_pinterp.nc"
+            f"{CMIP6anom_dir}/interp_plevs/{varname}_CC_signal_ssp126_2070-2099_1985-2014_pinterp.nc"
         ):
             fin = xr.open_dataset(
-                f"{CMIP6anom_dir}/{varname}_CC_signal_ssp585_2070-2099_1985-2014.nc"
+                f"{CMIP6anom_dir}/{varname}_CC_signal_ssp126_2070-2099_1985-2014.nc"
             )
             fin.reindex(plev=fin.plev[::-1])
             fin_pinterp = fin.interp(
                 plev=era5_plev, kwargs={"fill_value": "extrapolate"}
             )
             fin_pinterp.to_netcdf(
-                f"{CMIP6anom_dir}/interp_plevs/{varname}_CC_signal_ssp585_2070-2099_1985-2014_pinterp.nc",
+                f"{CMIP6anom_dir}/interp_plevs/{varname}_CC_signal_ssp126_2070-2099_1985-2014_pinterp.nc",
                 unlimited_dims="time",
             )
         ctime1 = checkpoint(ctime_00, f"{varname} file interpolated")

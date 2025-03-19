@@ -174,7 +174,7 @@ emonth = 1
 vars3d = ["hur", "ta", "ua", "va", "zg"]
 vars3d_codes = {"hur": "r", "ta": "t", "ua": "u", "va": "v", "zg": "z"}
 # vars3d_codes={'hur':'var157','ta':'var130','ua':'var131','va':'var132','zg':'var129'}
-vars2d = ["hurs", "tas", "ps", "psl", "ts"] #"uas", "vas"
+vars2d = ["hurs", "tas", "ps", "psl", "ts"] #"uas", "vas", 
 vars2d_codes = {
     "dew": "2d",
     "tas": "2t",
@@ -252,40 +252,34 @@ nlat = 81 #601
 nlon = 85 #1200
 
 
-file_ref = nc.Dataset("%s/ERA5-20220110-20220114-sl.nc" % (ERA5_dir), "r") #era5_daily_sfc_20120101.nc" % (ERA5_dir), "r")
+file_ref = nc.Dataset("%s/era5_daily_sfc_20220110.nc" % (ERA5_dir), "r") #era5_daily_sfc_20120101.nc" % (ERA5_dir), "r")
 lat = file_ref.variables["lat"][:]
 lon = file_ref.variables["lon"][:]
 
 olon, olat = np.meshgrid(lon, lat)
 
+
 year = syear
 month = smonth
-day = 1
-sday = 10
-eday = 14
+day = 10
+sday = day
+eday = 14 + 1
 
-while year < eyear or (year == eyear): # and month < emonth):
-
+while year < eyear or (year == eyear and day < eday): # and month < emonth):
     midmonth = calc_midmonth(year)
-
+    
     print("processing year %s month %02d day %02d" % (year, month, day))
 
-    # ferapl = nc.Dataset(
-    #     "%s/era5_daily_pl_%s%02d%02d.nc" % (ERA5_dir, year, month, day), "r"
-    # )
     ferapl = nc.Dataset(
-        "%s/ERA5-%s%02d%02d-%s%02d%02d-pl.nc" % (ERA5_dir, year, month, sday, year, month, eday), "r"
+        "%s/era5_daily_pl_%s%02d%02d.nc" % (ERA5_dir, year, month, day), "r"
     )
-    # ferasfc = nc.Dataset(
-    #     "%s/era5_daily_sfc_%s%02d%02d.nc" % (ERA5_dir, year, month, day), "r"
-    # )
     ferasfc = nc.Dataset(
-        "%s/ERA5-%s%02d%02d-%s%02d%02d-sl.nc" % (ERA5_dir, year, month, sday, year, month, eday), "r"
+        "%s/era5_daily_sfc_%s%02d%02d.nc" % (ERA5_dir, year, month, day), "r"
     )
 
-    date_init = dt.datetime(year, month, sday, 00) #day, 00)
+    date_init = dt.datetime(year, month, day, 00)
     print('date_init:', date_init)
-    date_end = dt.datetime(year, month, eday, 23) #day, 18)
+    date_end = dt.datetime(year, month, day, 23)
     print('date_end:', date_end)
 
     time_filepl = ferapl.variables["time"]
@@ -299,7 +293,7 @@ while year < eyear or (year == eyear): # and month < emonth):
     print('ndays:', ndays)
     nsteps = int((date_end - date_init).total_seconds() / 86400.0 * 4.0 + 1)
     print('nsteps:', nsteps)
-    # import pdb; pdb.set_trace()
+
     vout = {}
     print("Looping over timesteps in original ERA5 file")
 
@@ -308,6 +302,7 @@ while year < eyear or (year == eyear): # and month < emonth):
             time_filepl[nt], units=time_filepl.units, calendar="standard"
         )
         print("processing 3Dvar time: ", proc_date)
+    
         Y = str(proc_date.year)
         M = str(proc_date.month)
         D = str(proc_date.day)
@@ -328,22 +323,29 @@ while year < eyear or (year == eyear): # and month < emonth):
                     (midmonth[i] - proc_date).total_seconds()
                     for i in range(len(midmonth))
                 ]
-            )
+            )            
             tdelta_min = np.argmin(np.abs(tdelta))
+            print("tdelta_min:", tdelta_min)            
             if tdelta[tdelta_min] < 0:
                 i1 = (tdelta_min - 1) % 12
                 i2 = (tdelta_min) % 12
                 tdelta_before = np.abs(tdelta[tdelta_min])
+                print('tdelta_before:', tdelta_before)
                 tdelta_mid_month = (
                     midmonth[tdelta_min + 1] - midmonth[tdelta_min]
                 ).total_seconds()
+                print('tdelta_mid_month:', tdelta_mid_month)
+               
             else:
                 i1 = (tdelta_min - 2) % 12
                 i2 = (tdelta_min - 1) % 12
                 tdelta_before = np.abs(tdelta[tdelta_min - 1])
+                print('tdelta_before:', tdelta_before)
                 tdelta_mid_month = (
                     midmonth[tdelta_min] - midmonth[tdelta_min - 1]
                 ).total_seconds()
+                print('tdelta_mid_month:', tdelta_mid_month)
+         
 
             for var in vars3d:
                 print("Processing variable %s" % (var))
@@ -479,7 +481,7 @@ while year < eyear or (year == eyear): # and month < emonth):
                                 units = var_units_era5["%s" % (vars2d_codes[var])]
                         if ii == 1:
                             aa = var_anom[:]
-                            # units = var_units_era5["%s" % (vars2d_codes[var])] #anom_units
+                            units = anom_units
                         if ii == 2:
                             aa = vout[var][:]
                         figname = figs_path + "%s_%s_%s-%s-%s-%s.png" % (
@@ -492,7 +494,7 @@ while year < eyear or (year == eyear): # and month < emonth):
                         )
                         plt.contourf(aa)
                         plt.colorbar()
-                        # plt.title(var + " [" + units + "]")
+                        plt.title(var + " [" + units + "]")
                         plt.savefig(figname)
                         plt.close()
                         # -----------------------------------------------------------------------------------------------
@@ -529,6 +531,8 @@ while year < eyear or (year == eyear): # and month < emonth):
             fields2d[3, :, :] = np.float32(vout["tas"])
             fields2d[4, :, :] = np.float32(vout["ts"])
 
+            output_file = "/mnt/hdd2/S_K_B/WRF_Intermediate_Files/"
+
             f90.writeint(
                 plvs,
                 fields3d,
@@ -540,9 +544,16 @@ while year < eyear or (year == eyear): # and month < emonth):
                 startlon,
                 deltalon,
                 deltalat,
+                output_file,
             )
             # ###################################################################################################
     end_date = dt.datetime(year, month, day) + dt.timedelta(days=1)
+    print("end_date:", end_date)
     year = end_date.year
+    print("enddate_year:", year)
     month = end_date.month
+    print("enddate_month:", month)
     day = end_date.day
+    print("enddate_day:", day)
+
+    # pdb.set_trace()

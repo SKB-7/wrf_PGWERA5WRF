@@ -168,25 +168,27 @@ def main():
                 # import pdb; pdb.set_trace()  # fmt: skip
                 fin.to_netcdf(f"{crctd_plvs}/{filename.split('_delta')[0]}_crctd_plvs_delta.nc")
 
-            ens_file = ENSdelta_odir + "/" + f"{varname}_CC_signal_ssp585_2099-2070_1985-2014.nc"
-            print(ens_file)
-            crctd_plvs_file = f"{crctd_plvs}/{varname}_{GCM}_crctd_plvs_delta.nc"
-            # print('crctd_plvs_file:', crctd_plvs_file)
+            # ens_file = ENSdelta_odir + "/" + f"{varname}_CC_signal_ssp585_2099-2070_1985-2014.nc"
+            # print(ens_file)
+            # crctd_plvs_file = f"{crctd_plvs}/{varname}_{GCM}_crctd_plvs_delta.nc"
+            # # print('crctd_plvs_file:', crctd_plvs_file)
 
-            if not os.path.isfile(ens_file):
-                try:
-                    cdo_command = (f"cdo ensmean {crctd_plvs_file} {ens_file}")
-                    print(f"Command: {cdo_command}")
-                    subprocess.check_output(cdo_command, shell=True)
-                    print(f"{bcolors.OKGREEN}Ensemble mean of GCMs{bcolors.ENDC}")
-                except Exception:
-                    raise SystemExit(
-                        f"{bcolors.ERROR}ERROR: Could not make the ensemble mean{bcolors.ENDC}"
-                    )
+            # if not os.path.isfile(ens_file):
+            #     try:
+            #         cdo_command = (f"cdo ensmean {crctd_plvs_file} {ens_file}")
+            #         print(f"Command: {cdo_command}")
+            #         subprocess.check_output(cdo_command, shell=True)
+            #         print(f"{bcolors.OKGREEN}Ensemble mean of GCMs{bcolors.ENDC}")
+            #     except Exception:
+            #         raise SystemExit(
+            #             f"{bcolors.ERROR}ERROR: Could not make the ensemble mean{bcolors.ENDC}"
+            #         )
 
-    # for varname in variables:
-    #     print(varname)
+    for varname in variables:
+        print(varname)
     #     # import pdb; pdb.set_trace()  # fmt: skip
+        ens_file = ENSdelta_odir + "/" + f"{varname}_CC_signal_ssp126_2070-2099_1985-2014.nc"
+        crctd_plvs_file = f"{crctd_plvs}/{varname}_*"
     #     ens_file = f"{ENSdelta_odir}/{varname}_CC_signal_ssp585_2099-2070_1985-2014.nc"
     #     if not os.path.isfile(ens_file):
     #         try:
@@ -199,12 +201,13 @@ def main():
     #             raise SystemExit(
     #                 f"{bcolors.ERROR}ERROR: Could not make the ensemble mean{bcolors.ENDC}"
     #             )
-        # filesin = sorted(glob(f"{args.corrected_plevs_dir}/{varname}_*"))
-        # print(filesin)
+        filesin = sorted(glob(f"{crctd_plvs_file}"))
+        print(filesin)
 
-        # fin = xr.open_mfdataset(filesin, concat_dim="model", combine="nested")
-        # fin_ensmean = fin.mean(dim="model").squeeze()
-        # fin_ensmean.to_netcdf(f"{varname}_CC_signal_ssp585_2070-2099_1985-2014.nc")
+        fin = xr.open_mfdataset(filesin, concat_dim="model", combine="nested")
+        fin_ensmean = fin.mean(dim="model").squeeze()
+        fin_ensmean.to_netcdf(f"{ens_file}")
+        print(f"{bcolors.OKGREEN}Ensemble mean of GCMs{bcolors.ENDC}")
 
 
 ###############################################################################

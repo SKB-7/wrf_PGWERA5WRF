@@ -1,4 +1,4 @@
-subroutine writeint(plvs,fields3d,fields2d,hdate,nLats,nLons,startlat,startlon,deltalon,deltalat)
+subroutine writeint(plvs,fields3d,fields2d,hdate,nLats,nLons,startlat,startlon,deltalon,deltalat,output_file)
 
 !-----------------------------
 !output the variables in intermediate format
@@ -37,7 +37,7 @@ real :: deltalon,deltalat ! Grid spacing, degrees
 !*******************************************************
 
 
-
+! integer, parameter :: MAXFILELENGTH = 256
 
 real :: xfcst ! Forecast hour of data
 real :: xlvl ! Vertical level of data in 2-d array
@@ -53,7 +53,7 @@ character (len=46) :: desc ! Short description of data
 character (len=46) :: fields3d_desc(5),fields2d_desc(7)
 character (len=25) :: fields3d_units(5),fields2d_units(7)
 character (len=9)  :: fields3d_name(5), fields2d_name(7)
-
+character (len=256)  :: output_file
 
 integer :: ounit !output file
 integer :: status,nf,nl,nfields3d,nfields2d
@@ -107,18 +107,22 @@ fields2d_desc(5) = 'Sea-level pressure                          '
 fields2d_desc(6) = 'Temperature                                 '
 fields2d_desc(7) = 'Sea-Surface Temperature                     '
 
-
+if (LEN_TRIM(output_file) == 0) then
+  output_file = "./"  ! Default to current directory if no path is provided
+endif
 
 xfcst = 0.0 ! In the case of GCM is 0 hours
 ounit=11
 
-open(ounit,file="./"//TRIM(ofname)//":"//hdate(1:13),form='unformatted',IOSTAT=status,convert="BIG_ENDIAN")
+print *, "Attempting to write to: ", TRIM(output_file)//TRIM(ofname)//":"//hdate(1:13)
+
+open(ounit,file=TRIM(output_file)//TRIM(ofname)//":"//hdate(1:13),form='unformatted',IOSTAT=status,convert="BIG_ENDIAN")
 if (status /= 0) then
-  print *,"could not create ./"//TRIM(ofname)//':'//hdate(1:13)
+  print *,"could not create:", TRIM(output_file)//TRIM(ofname)//":"//hdate(1:13)
   stop
 endif
 
-print *, "./"//TRIM(ofname)//":"//hdate(1:13)
+print *, "Output saved to: ", TRIM(output_file)//TRIM(ofname)//"_"//hdate(1:13)
 
 !########## 3-D FIELDS ###############
 
