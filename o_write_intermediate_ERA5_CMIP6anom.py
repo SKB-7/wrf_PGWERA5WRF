@@ -164,7 +164,7 @@ parser.add_option(
 ###
 
 overwrite_file = False
-create_figs = False
+create_figs = True
 syear = opts.syear
 eyear = opts.eyear
 nyears = eyear - syear + 1
@@ -199,6 +199,7 @@ var_units_era5 = {
     "2t": "K",
     "2d": "K",
     "lsm": "0/1 Flag",
+    "skt": "K",
 }
 
 nfields3d = len(vars3d)
@@ -208,6 +209,7 @@ CMIP6anom_dir_pinterp = "/mnt/hdd2/S_K_B/annualcycles_deltas_regridERA5/regrid_E
 ERA5_dir = "/mnt/hdd2/S_K_B/ERA5" #"/home/dargueso/BDY_DATA/ERA5/ERA5_netcdf"
 figs_path = "/mnt/hdd2/S_K_B/PGW_Figs" #"/home/dargueso/BDY_DATA/CMIP6/Figs"
 CMIP6anom_dir = "/mnt/hdd2/S_K_B/annualcycles_deltas_regridERA5/regrid_ERA5/ENSdelta"
+output_file = "/mnt/hdd2/S_K_B/WRF_Intermediate_Files/"
 plvs = [
     100000.0,
     97500.00,
@@ -311,7 +313,7 @@ while year < eyear or (year == eyear and day < eday): # and month < emonth):
 
         # CHECK IF THE FILE ALREADY EXISTS
         file_out = (
-            "ERA5:"
+            output_file + "ERA5:"
             + filedate.split("_")[0]
             + "_"
             + filedate.split("_")[1].split("-")[0]
@@ -399,7 +401,7 @@ while year < eyear or (year == eyear and day < eday): # and month < emonth):
                             units = var_units_era5["%s" % (vars3d_codes[var])]
                         if ii == 2:
                             aa = vout[var][nlev, :]
-                        figname = figs_path + "%s_lev%s_%s_%s-%s-%s-%s.png" % (
+                        figname = figs_path + "/" + "%s_lev%s_%s_%s-%s-%s-%s.png" % (
                             var,
                             str(nlev),
                             file_name[ii],
@@ -481,10 +483,10 @@ while year < eyear or (year == eyear and day < eday): # and month < emonth):
                                 units = var_units_era5["%s" % (vars2d_codes[var])]
                         if ii == 1:
                             aa = var_anom[:]
-                            units = anom_units
+                            # units = anom_units
                         if ii == 2:
                             aa = vout[var][:]
-                        figname = figs_path + "%s_%s_%s-%s-%s-%s.png" % (
+                        figname = figs_path + "/" + "%s_%s_%s-%s-%s-%s.png" % (
                             var,
                             file_name[ii],
                             Y,
@@ -494,7 +496,7 @@ while year < eyear or (year == eyear and day < eday): # and month < emonth):
                         )
                         plt.contourf(aa)
                         plt.colorbar()
-                        plt.title(var + " [" + units + "]")
+                        # plt.title(var + " [" + units + "]")
                         plt.savefig(figname)
                         plt.close()
                         # -----------------------------------------------------------------------------------------------
@@ -530,8 +532,6 @@ while year < eyear or (year == eyear and day < eday): # and month < emonth):
             fields2d[2, :, :] = np.float32(vout["psl"])
             fields2d[3, :, :] = np.float32(vout["tas"])
             fields2d[4, :, :] = np.float32(vout["ts"])
-
-            output_file = "/mnt/hdd2/S_K_B/WRF_Intermediate_Files/"
 
             f90.writeint(
                 plvs,
