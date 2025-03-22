@@ -209,7 +209,7 @@ CMIP6anom_dir_pinterp = "/mnt/hdd2/S_K_B/annualcycles_deltas_regridERA5/regrid_E
 ERA5_dir = "/mnt/hdd2/S_K_B/ERA5" #"/home/dargueso/BDY_DATA/ERA5/ERA5_netcdf"
 figs_path = "/mnt/hdd2/S_K_B/PGW_Figs" #"/home/dargueso/BDY_DATA/CMIP6/Figs"
 CMIP6anom_dir = "/mnt/hdd2/S_K_B/annualcycles_deltas_regridERA5/regrid_ERA5/ENSdelta"
-output_file = "/mnt/hdd2/S_K_B/WRF_Intermediate_Files/"
+output_file = "/mnt/hdd2/S_K_B/WRF_Intermediate_Files/x/"
 plvs = [
     100000.0,
     97500.00,
@@ -386,7 +386,7 @@ while year < eyear or (year == eyear and day < eday): # and month < emonth):
                     temp[temp > 100] = 100
                 vout[var] = temp
                 fanom.close()
-
+                pdb.set_trace()
                 # -----------------------------------------------------------------------------------------------
                 # MAKE PLOT
                 if create_figs == True:
